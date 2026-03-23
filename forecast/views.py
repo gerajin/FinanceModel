@@ -545,6 +545,15 @@ def delete_proyecto(request, pk):
     return redirect('forecast:project_list')
 
 
+def download_sample(request):
+    from django.conf import settings as _settings
+    sample_path = _settings.BASE_DIR / 'sample_data.csv'
+    with open(sample_path, 'rb') as f:
+        response = HttpResponse(f.read(), content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="sample_data.csv"'
+    return response
+
+
 def register(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)

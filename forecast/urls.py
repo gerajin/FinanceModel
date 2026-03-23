@@ -12,4 +12,5 @@ urlpatterns = [
     path('projects/<int:pk>/charts/',                 views.project_charts,     name='project_charts'),
     path('projects/<int:pk>/download/<str:tipo>/',    views.download_proyecto,  name='download_proyecto'),
     path('projects/<int:pk>/delete/',                 views.delete_proyecto,    name='delete_proyecto'),
+    path('sample-csv/',                               views.download_sample,    name='download_sample'),
 ]
