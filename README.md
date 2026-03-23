@@ -2,6 +2,8 @@
 
 Aplicación web Django para generar proyecciones del Estado de Resultados (P&L) a partir de datos históricos CSV, con selección automática de modelo estadístico y análisis de IA generado en tiempo real.
 
+Se puede probar en [NexoForecasting](https://forecast.nexocontable.com.mx/forecast/)
+
 ---
 
 ## Índice
@@ -141,43 +143,7 @@ python manage.py createsuperuser
 # 7. Levantar el servidor de desarrollo
 python manage.py runserver
 ```
-
 La aplicación estará disponible en `http://127.0.0.1:8000/forecast/`.
-
----
-
-## Configuración (.env)
-
-Crear un archivo `.env` en la raíz del proyecto con las siguientes variables:
-
-```env
-# ── Django ────────────────────────────────────────────
-SECRET_KEY="clave-secreta-aleatoria-minimo-50-caracteres"
-DEBUG="True"                          # False en producción
-ALLOWED_HOSTS="127.0.0.1,localhost"  # Dominios separados por coma
-
-# ── CSRF (producción con HTTPS) ───────────────────────
-CSRF_TRUSTED_ORIGINS="https://tudominio.com"
-
-# ── Base de datos ─────────────────────────────────────
-# Sin definir DB_ENGINE → usa SQLite (desarrollo)
-# DB_ENGINE="django.db.backends.postgresql"
-# DB_NAME="financemodel"
-# DB_USER="financemodel_user"
-# DB_PASSWORD="password_seguro"
-# DB_HOST="localhost"
-# DB_PORT="5432"
-
-# ── API de IA (OpenRouter) ────────────────────────────
-OPENROUTER_API_KEY="sk-or-v1-..."
-```
-
-> **Nota:** El archivo `.env` está en `.gitignore` y nunca debe subirse al repositorio.
-
-Para generar una `SECRET_KEY` segura:
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(50))"
-```
 
 ---
 
@@ -252,19 +218,6 @@ Solo el **volumen** se proyecta estadísticamente. El resto de conceptos del P&L
 | Prophet | 24 meses | — | Múltiples estacionalidades y cambios de tendencia |
 
 La selección automática elige el método más avanzado disponible según el número de meses históricos.
-
----
-
-## Deploy en producción
-
-`settings.py`.
-
-Para Nginx:
-```nginx
-proxy_set_header X-Forwarded-Proto $scheme;
-proxy_set_header Host $host;
-proxy_pass http://127.0.0.1:8000;
-```
 
 ---
 
