@@ -257,36 +257,7 @@ La selección automática elige el método más avanzado disponible según el n�
 
 ## Deploy en producción
 
-### Variables de entorno requeridas
-
-```env
-SECRET_KEY="..."         # Clave segura, nunca la del desarrollo
-DEBUG="False"
-ALLOWED_HOSTS="tudominio.com"
-CSRF_TRUSTED_ORIGINS="https://tudominio.com"
-DB_ENGINE="django.db.backends.postgresql"
-DB_NAME="..."
-DB_USER="..."
-DB_PASSWORD="..."
-DB_HOST="..."
-DB_PORT="5432"
-OPENROUTER_API_KEY="..."
-```
-
-### Inicio con script
-
-```bash
-bash start.sh
-```
-
-El script `start.sh` ejecuta en orden:
-1. `python manage.py collectstatic --noinput`
-2. `python manage.py migrate --noinput`
-3. `gunicorn financemodel.wsgi:application -c gunicorn.conf.py`
-
-### Detrás de proxy inverso (Nginx / Traefik)
-
-Asegúrate de que el proxy envíe el header `X-Forwarded-Proto`. Django lo lee gracias a `SECURE_PROXY_SSL_HEADER` configurado en `settings.py`.
+`settings.py`.
 
 Para Nginx:
 ```nginx
