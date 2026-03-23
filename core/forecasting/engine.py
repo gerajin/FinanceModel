@@ -7,22 +7,15 @@ from .methods.average import AverageMethod
 from .methods.linear import LinearMethod
 from .methods.arima import ARIMAMethod
 from .methods.sarima import SARIMAMethod
-
+from .methods.prophet import ProphetMethod
 
 METODOS_DISPONIBLES = {
     "promedio": AverageMethod,
     "linear":   LinearMethod,
     "arima":    ARIMAMethod,
     "sarima":   SARIMAMethod,
+    "prophet": ProphetMethod,
 }
-
-try:
-    from .methods.prophet import ProphetMethod, _PROPHET_OK
-    if _PROPHET_OK:
-        METODOS_DISPONIBLES["prophet"] = ProphetMethod
-except ImportError:
-    pass
-
 
 def ejecutar_forecast(
     ruta_csv: str,
