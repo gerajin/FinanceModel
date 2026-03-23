@@ -1,12 +1,7 @@
 import pandas as pd
 
 from .base import ForecastMethod
-
-try:
-    from prophet import Prophet
-    _PROPHET_OK = True
-except ImportError:
-    _PROPHET_OK = False
+from prophet import Prophet
 
 
 class ProphetMethod(ForecastMethod):
