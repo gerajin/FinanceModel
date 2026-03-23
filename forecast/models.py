@@ -23,6 +23,7 @@ class Proyecto(models.Model):
     metodo_usado        = models.CharField(max_length=20)
     inflacion_anual     = models.FloatField(default=0.04)
     variacion_costos    = models.FloatField(default=0.03)
+    incremento_salarial = models.FloatField(default=0.05)
     meses_historicos    = models.IntegerField()
     score_confiabilidad = models.CharField(max_length=20)
     pnl_mensual_json    = models.JSONField(default=dict)

@@ -3,7 +3,7 @@
   <div class="container">
     <a class="navbar-brand" href="{% url 'forecast:upload' %}">
       <span class="brand-icon"><i class="bi bi-graph-up-arrow"></i></span>
-      FinanceModel
+      NexoForecasting
     </a>
 
     <button class="navbar-toggler" type="button"
@@ -16,10 +16,17 @@
       <ul class="navbar-nav ms-auto align-items-center gap-1">
 
         <li class="nav-item">
+          {% if user.is_authenticated %}
+          <a class="nav-link{% if request.resolver_match.url_name == 'nuevo' %} active{% endif %}"
+             href="{% url 'forecast:nuevo' %}">
+            <i class="bi bi-cloud-upload me-1"></i>Nuevo Forecast
+          </a>
+          {% else %}
           <a class="nav-link{% if request.resolver_match.url_name == 'upload' %} active{% endif %}"
              href="{% url 'forecast:upload' %}">
             <i class="bi bi-cloud-upload me-1"></i>Nuevo Forecast
           </a>
+          {% endif %}
         </li>
 
         {% if user.is_authenticated %}

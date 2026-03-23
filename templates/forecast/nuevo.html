@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Nuevo Forecast – FinanceModel{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+
+    <div class="fm-card">
+      <div class="fm-card-header">
+        <i class="bi bi-lightning-charge"></i>
+        <h5>Nuevo Forecast Financiero</h5>
+      </div>
+      <div class="fm-card-body fm-form">
+        <form method="post" enctype="multipart/form-data" id="forecastForm">
+          {% csrf_token %}
+
+          <!-- ── Nombre del proyecto (solo auth) ── -->
+          {% if form.nombre %}
+          <div class="mb-4">
+            <label for="{{ form.nombre.id_for_label }}" class="fm-form-label">
+              {{ form.nombre.label }}<span class="text-danger ms-1">*</span>
+            </label>
+            {{ form.nombre }}
+            {% for error in form.nombre.errors %}
+              <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- ── Método + explicación ── -->
+          {% if form.metodo %}
+          <div class="mb-4">
+            <div class="row g-3 align-items-start">
+              <div class="col-md-5">
+                <label for="{{ form.metodo.id_for_label }}" class="fm-form-label">
+                  {{ form.metodo.label }}
+                </label>
+                {{ form.metodo }}
+                {% for error in form.metodo.errors %}
+                  <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+                {% endfor %}
+              </div>
+              <div class="col-md-7">
+                <div id="metodo-info" style="
+                  background: linear-gradient(135deg,rgba(2,8,135,.05),rgba(56,54,154,.03));
+                  border: 1px solid var(--border-light);
+                  border-radius: var(--radius-md);
+                  padding: .85rem 1rem;
+                  font-size: .83rem;
+                  line-height: 1.6;
+                  color: var(--text-muted);
+                  min-height: 3.5rem;
+                ">
+                  <i class="bi bi-info-circle text-royal me-1"></i>
+                  <span id="metodo-desc">Selecciona un método para ver su descripción.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- ── Premisas ── -->
+          <p class="fm-section-title mb-3">Premisas de proyección</p>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label for="{{ form.inflacion_anual.id_for_label }}" class="fm-form-label">
+                {{ form.inflacion_anual.label }}
+              </label>
+              {{ form.inflacion_anual }}
+              {% if form.inflacion_anual.help_text %}
+                <div class="form-text">{{ form.inflacion_anual.help_text }}</div>
+              {% endif %}
+              {% for error in form.inflacion_anual.errors %}
+                <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              <label for="{{ form.variacion_costos.id_for_label }}" class="fm-form-label">
+                {{ form.variacion_costos.label }}
+              </label>
+              {{ form.variacion_costos }}
+              {% if form.variacion_costos.help_text %}
+                <div class="form-text">{{ form.variacion_costos.help_text }}</div>
+              {% endif %}
+              {% for error in form.variacion_costos.errors %}
+                <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              <label for="{{ form.incremento_salarial.id_for_label }}" class="fm-form-label">
+                {{ form.incremento_salarial.label }}
+              </label>
+              {{ form.incremento_salarial }}
+              {% if form.incremento_salarial.help_text %}
+                <div class="form-text">{{ form.incremento_salarial.help_text }}</div>
+              {% endif %}
+              {% for error in form.incremento_salarial.errors %}
+                <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- ── CSV ── -->
+          <p class="fm-section-title mb-3">Datos históricos</p>
+          <div class="mb-4">
+            <label for="{{ form.csv_file.id_for_label }}" class="fm-form-label">
+              {{ form.csv_file.label }}<span class="text-danger ms-1">*</span>
+            </label>
+            {{ form.csv_file }}
+            {% if form.csv_file.help_text %}
+              <div class="form-text mt-1">{{ form.csv_file.help_text }}</div>
+            {% endif %}
+            {% for error in form.csv_file.errors %}
+              <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- Referencia de formato -->
+          <div class="p-3 mb-4" style="background:var(--bg-light);border-radius:var(--radius-md);border:1px solid var(--border-light);">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="small fw-600" style="color:var(--text-muted);">
+                <i class="bi bi-file-earmark-text text-royal me-1"></i>Columnas requeridas en el CSV
+              </span>
+              <a href="{% url 'forecast:download_sample' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-download me-1"></i>CSV de ejemplo
+              </a>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              {% for col in cols_csv %}
+              <code style="font-size:.78rem;background:#fff;padding:.15rem .45rem;border-radius:4px;border:1px solid var(--border-light);">{{ col }}</code>
+              {% endfor %}
+            </div>
+            <p class="small mb-0 mt-2" style="color:var(--text-muted);">
+              <i class="bi bi-lightbulb text-warning me-1"></i>
+              Mínimo <strong>12 meses</strong> para modelos básicos · <strong>24+</strong> para ARIMA/SARIMA/Prophet
+            </p>
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-fm-primary btn-lg" id="submitBtn">
+              <i class="bi bi-lightning-charge me-1"></i>Generar Forecast
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const METODO_DESCRIPCIONES = {
+  'auto':    'Selección automática — el sistema evalúa tu historial y elige el método estadístico más preciso disponible según los meses de datos.',
+  'promedio':'Proyecta el promedio mensual del último año histórico. Ideal para datos estables sin tendencia clara. Requiere mínimo 3 meses.',
+  'linear':  'Ajusta una regresión lineal al historial. Funciona bien con crecimientos o decrecimientos sostenidos en el tiempo. Requiere mínimo 6 meses.',
+  'arima':   'Modelo autorregresivo integrado de media móvil. Captura tendencias y autocorrelaciones complejas sin componente estacional. Requiere 24+ meses.',
+  'sarima':  'Extiende ARIMA con componente estacional (m=12). Ideal para negocios con patrones de ventas por temporada o mes del año. Requiere 24+ meses.',
+  'prophet': 'Modelo de Meta para series temporales con múltiples estacionalidades. Robusto frente a cambios de tendencia y datos faltantes. Requiere 24+ meses.',
+};
+
+const select = document.getElementById('{{ form.metodo.id_for_label }}');
+const desc   = document.getElementById('metodo-desc');
+
+function actualizarDesc() {
+  desc.textContent = METODO_DESCRIPCIONES[select.value] || '';
+}
+
+if (select) {
+  select.addEventListener('change', actualizarDesc);
+  actualizarDesc();
+}
+
+document.getElementById('forecastForm').addEventListener('submit', function() {
+  const btn = document.getElementById('submitBtn');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
+  btn.disabled = true;
+});
+
+document.querySelector('input[type="file"]')?.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    if (!file.name.endsWith('.csv')) {
+      alert('Solo se permiten archivos .csv');
+      this.value = '';
+    } else if (file.size > 2 * 1024 * 1024) {
+      alert('El archivo no puede superar 2 MB');
+      this.value = '';
+    }
+  }
+});
+</script>
+{% endblock %}

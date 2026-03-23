@@ -1,5 +1,4 @@
 from django import forms
-from .models import Proyecto
 
 
 class ForecastForm(forms.Form):
@@ -12,27 +11,6 @@ class ForecastForm(forms.Form):
         ('prophet', 'Prophet'),
     ]
 
-    csv_file = forms.FileField(
-        label='Archivo CSV histórico',
-        help_text='Formato: fecha, volumen, precio_unitario, materia_prima, mo_directa, '
-                  'mo_indirecta, gastos_directos, gastos_indirectos',
-    )
-    inflacion_anual = forms.FloatField(
-        label='Inflación anual (%)',
-        initial=4.0,
-        min_value=0.0,
-        max_value=100.0,
-        help_text='Porcentaje anual (ej: 4 = 4%)',
-    )
-    variacion_costos = forms.FloatField(
-        label='Variación de costos (%)',
-        initial=3.0,
-        min_value=0.0,
-        max_value=100.0,
-        help_text='Porcentaje anual (ej: 3 = 3%)',
-    )
-
-    # Campos solo para usuarios autenticados
     nombre = forms.CharField(
         label='Nombre del proyecto',
         max_length=200,
@@ -43,12 +21,37 @@ class ForecastForm(forms.Form):
         choices=METODO_CHOICES,
         required=False,
     )
+    inflacion_anual = forms.FloatField(
+        label='Inflación anual (%)',
+        initial=4.0,
+        min_value=0.0,
+        max_value=100.0,
+        help_text='Afecta precio de venta y gastos operativos',
+    )
+    variacion_costos = forms.FloatField(
+        label='Variación de costos (%)',
+        initial=3.0,
+        min_value=0.0,
+        max_value=100.0,
+        help_text='Afecta materia prima',
+    )
+    incremento_salarial = forms.FloatField(
+        label='Incremento salarial anual (%)',
+        initial=5.0,
+        min_value=0.0,
+        max_value=100.0,
+        help_text='Afecta mano de obra directa e indirecta',
+    )
+    csv_file = forms.FileField(
+        label='Archivo CSV histórico',
+        help_text='Columnas: fecha, volumen, precio_unitario, materia_prima, '
+                  'mo_directa, mo_indirecta, gastos_directos, gastos_indirectos',
+    )
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
 
-        # Bootstrap classes
         for name, field in self.fields.items():
             widget = field.widget
             if isinstance(widget, forms.Select):
@@ -57,7 +60,6 @@ class ForecastForm(forms.Form):
                 widget.attrs['class'] = 'form-control'
 
         if user is None or not user.is_authenticated:
-            # Anónimos no ven nombre ni método
             del self.fields['nombre']
             del self.fields['metodo']
         else:
@@ -72,9 +74,10 @@ class ForecastForm(forms.Form):
         return f
 
     def clean_inflacion_anual(self):
-        v = self.cleaned_data['inflacion_anual']
-        return v / 100.0  # convertir a decimal
+        return self.cleaned_data['inflacion_anual'] / 100.0
 
     def clean_variacion_costos(self):
-        v = self.cleaned_data['variacion_costos']
-        return v / 100.0  # convertir a decimal
+        return self.cleaned_data['variacion_costos'] / 100.0
+
+    def clean_incremento_salarial(self):
+        return self.cleaned_data['incremento_salarial'] / 100.0

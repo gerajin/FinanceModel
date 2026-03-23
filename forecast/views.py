@@ -18,7 +18,7 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -63,9 +63,13 @@ def _csv_temporal(uploaded_file):
             pass
 
 
-def _run_forecast(path, inflacion, variacion, metodo):
+def _run_forecast(path, inflacion, variacion, salarial, metodo):
     """Ejecuta el forecast y retorna (resultado, hist_df)."""
-    premisas = Premisas(inflacion_anual=inflacion, variacion_costos=variacion)
+    premisas = Premisas(
+        inflacion_anual=inflacion,
+        variacion_costos=variacion,
+        incremento_salarial=salarial,
+    )
     resultado = ejecutar_forecast(ruta_csv=path, premisas=premisas, metodo=metodo)
     hist_df   = cargar_csv(path)
     return resultado, hist_df
@@ -277,32 +281,9 @@ def _make_charts_b64(pnl_mensual_df, hist_df=None, pnl_anual_df=None):
 
 # ─── Análisis de IA ───────────────────────────────────────────────────────────
 
-def _generar_analisis_ia(info: dict, pnl_anual_df) -> str:
-    """
-    Llama a OpenRouter (modelo gratuito) para generar un análisis breve del forecast.
-    Retorna el texto del análisis, o cadena vacía si falla o no hay clave configurada.
-    """
-    import traceback
-    from django.conf import settings
-
-    # ── DEBUG 1: clave ────────────────────────────────────────────────────────
-    api_key = getattr(settings, 'OPENROUTER_API_KEY', '').strip()
-    print(f"\n[IA-DEBUG] ── Inicio _generar_analisis_ia ──")
-    print(f"[IA-DEBUG] API key cargada: {'SÍ' if api_key else 'NO (vacía)'}")
-    if api_key:
-        print(f"[IA-DEBUG] Key preview: {api_key[:12]}...{api_key[-6:]}  (len={len(api_key)})")
-    else:
-        print("[IA-DEBUG] ABORTANDO: no hay API key en settings.OPENROUTER_API_KEY")
-        return ''
-
+def _build_ia_prompt(info: dict, pnl_anual_df) -> str:
     metodo = info.get('metodo_usado', 'desconocido').upper()
     meses  = info.get('meses', 0)
-
-    # ── DEBUG 2: datos del P&L ────────────────────────────────────────────────
-    print(f"[IA-DEBUG] Método={metodo}  Meses históricos={meses}")
-    print(f"[IA-DEBUG] pnl_anual_df type={type(pnl_anual_df)}  "
-          f"empty={pnl_anual_df is None or (hasattr(pnl_anual_df, 'empty') and pnl_anual_df.empty)}")
-
     lineas = []
     if pnl_anual_df is not None and not pnl_anual_df.empty:
         for fecha, fila in pnl_anual_df.iterrows():
@@ -311,11 +292,8 @@ def _generar_analisis_ia(info: dict, pnl_anual_df) -> str:
             util_op = float(fila['utilidad_operacion']) if 'utilidad_operacion' in pnl_anual_df.columns else 0.0
             margen  = round(util_op / ventas * 100, 1) if ventas else 0
             lineas.append(f"  {año}: Ventas={ventas:,.0f}  Ut.Op={util_op:,.0f}  Margen={margen}%")
-
     resumen_pnl = '\n'.join(lineas) if lineas else 'No disponible'
-    print(f"[IA-DEBUG] Resumen P&L:\n{resumen_pnl}")
-
-    prompt = (
+    return (
         f"Eres un analista financiero conciso. Se generó un pronóstico con los siguientes datos:\n"
         f"- Método de proyección: {metodo}\n"
         f"- Meses de historial disponibles: {meses}\n"
@@ -326,63 +304,58 @@ def _generar_analisis_ia(info: dict, pnl_anual_df) -> str:
         f"• Recomendación o punto de atención para la dirección del negocio (1 oración)."
     )
 
+
+def _ia_sse_generator(prompt: str, api_key: str):
+    """Generator que produce chunks SSE desde OpenRouter streaming API."""
     payload = {
         "model": "openrouter/free",
         "messages": [{"role": "user", "content": prompt}],
+        "stream": True,
     }
-
-    # ── DEBUG 3: request ──────────────────────────────────────────────────────
-    print(f"[IA-DEBUG] Enviando POST a OpenRouter  modelo={payload['model']}")
-    print(f"[IA-DEBUG] Prompt ({len(prompt)} chars): {prompt[:200]}...")
-
     try:
-        resp = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
+        with requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             data=json.dumps(payload),
-            timeout=30,
-        )
-
-        # ── DEBUG 4: respuesta ────────────────────────────────────────────────
-        print(f"[IA-DEBUG] HTTP status: {resp.status_code}")
-        print(f"[IA-DEBUG] Response headers: {dict(resp.headers)}")
-        print(f"[IA-DEBUG] Response body (500 chars): {resp.text[:500]}")
-
-        resp.raise_for_status()
-        data = resp.json()
-
-        # ── DEBUG 5: contenido extraído ───────────────────────────────────────
-        choices = data.get('choices', [])
-        print(f"[IA-DEBUG] choices count: {len(choices)}")
-        if choices:
-            msg = choices[0].get('message', {})
-            print(f"[IA-DEBUG] message keys: {list(msg.keys())}")
-            content = msg.get('content', '') or ''
-            print(f"[IA-DEBUG] content ({len(content)} chars): {content[:300]}")
-            print(f"[IA-DEBUG] ── Fin OK ──\n")
-            return content.strip()
-        else:
-            print(f"[IA-DEBUG] ERROR: 'choices' vacío. Full response: {data}")
-            return ''
-
-    except requests.exceptions.Timeout:
-        print(f"[IA-DEBUG] ERROR: Timeout tras 30 s")
-        return ''
-    except requests.exceptions.HTTPError as e:
-        print(f"[IA-DEBUG] ERROR HTTP: {e}  |  body: {resp.text[:500]}")
-        return ''
-    except Exception as e:
-        print(f"[IA-DEBUG] ERROR inesperado: {type(e).__name__}: {e}")
-        print(traceback.format_exc())
-        return ''
+            stream=True,
+            timeout=60,
+        ) as resp:
+            resp.raise_for_status()
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                if isinstance(line, bytes):
+                    line = line.decode('utf-8')
+                if not line.startswith('data: '):
+                    continue
+                chunk_str = line[6:]
+                if chunk_str == '[DONE]':
+                    break
+                try:
+                    chunk_data = json.loads(chunk_str)
+                    delta = chunk_data['choices'][0].get('delta', {}).get('content', '')
+                    if delta:
+                        yield f"data: {json.dumps({'t': delta})}\n\n"
+                except (json.JSONDecodeError, KeyError, IndexError):
+                    continue
+    except Exception:
+        yield 'data: {"error":true}\n\n'
+    yield "data: [DONE]\n\n"
 
 
 # ─── Vistas ───────────────────────────────────────────────────────────────────
 
 def forecast_upload(request):
+    """Landing page informativo. Redirige a autenticados directamente al formulario."""
+    if request.user.is_authenticated:
+        return redirect('forecast:nuevo')
+    return render(request, 'forecast/upload.html')
+
+
+def forecast_nuevo(request):
+    """Formulario de nuevo forecast (separado del landing)."""
+    _cols_csv = ['fecha','volumen','precio_unitario','materia_prima',
+                 'mo_directa','mo_indirecta','gastos_directos','gastos_indirectos']
     form = ForecastForm(user=request.user)
 
     if request.method == 'POST':
@@ -391,26 +364,23 @@ def forecast_upload(request):
             csv_file  = form.cleaned_data['csv_file']
             inflacion = form.cleaned_data['inflacion_anual']
             variacion = form.cleaned_data['variacion_costos']
+            salarial  = form.cleaned_data['incremento_salarial']
             metodo    = form.cleaned_data.get('metodo', 'auto') or 'auto'
 
             try:
                 with _csv_temporal(csv_file) as path:
-                    resultado, hist_df = _run_forecast(path, inflacion, variacion, metodo)
+                    resultado, hist_df = _run_forecast(path, inflacion, variacion, salarial, metodo)
             except (ValueError, FileNotFoundError) as e:
                 form.add_error('csv_file', str(e))
-                return render(request, 'forecast/upload.html', {'form': form})
+                return render(request, 'forecast/nuevo.html', {'form': form, 'cols_csv': _cols_csv})
             except Exception as e:
                 messages.error(request, f'Error inesperado: {e}')
-                return render(request, 'forecast/upload.html', {'form': form})
+                return render(request, 'forecast/nuevo.html', {'form': form, 'cols_csv': _cols_csv})
 
             info        = resultado['info']
             pnl_mensual = resultado['pnl_mensual']
             pnl_anual   = resultado['pnl_anual']
             hist_24     = hist_df.tail(24)
-
-            # Análisis de IA (puede tardar; falla silenciosamente si no hay clave)
-            analisis_ia = _generar_analisis_ia(info, pnl_anual)
-            print(f"[IA-DEBUG] analisis_ia resultado: {repr(analisis_ia[:80]) if analisis_ia else 'VACÍO'}")
 
             if request.user.is_authenticated:
                 nombre = form.cleaned_data.get('nombre', 'Proyecto sin nombre')
@@ -421,12 +391,12 @@ def forecast_upload(request):
                     metodo_usado        = info.get('metodo_usado', metodo),
                     inflacion_anual     = inflacion,
                     variacion_costos    = variacion,
+                    incremento_salarial = salarial,
                     meses_historicos    = info.get('meses', 0),
                     score_confiabilidad = info.get('score', ''),
                     pnl_mensual_json    = _df_a_dict(pnl_mensual),
                     pnl_anual_json      = _df_a_dict(pnl_anual),
                     historial_json      = _df_a_dict(hist_24),
-                    analisis_ia         = analisis_ia,
                 )
                 messages.success(request, f'Proyecto "{nombre}" guardado exitosamente.')
                 return redirect('forecast:project_detail', pk=proyecto.pk)
@@ -437,11 +407,10 @@ def forecast_upload(request):
                     'pnl_mensual': _df_a_dict(pnl_mensual),
                     'pnl_anual':   _df_a_dict(pnl_anual),
                     'historial':   _df_a_dict(hist_24),
-                    'analisis_ia': analisis_ia,
                 }
                 return redirect('forecast:result_anon', token=token)
 
-    return render(request, 'forecast/upload.html', {'form': form})
+    return render(request, 'forecast/nuevo.html', {'form': form, 'cols_csv': _cols_csv})
 
 
 def result_anon(request, token):
@@ -457,16 +426,11 @@ def result_anon(request, token):
     hist_df        = _dict_a_df(hist_data) if hist_data else None
     charts         = _make_charts_b64(pnl_mensual_df, hist_df, pnl_anual_df)
 
-    analisis_ia = data.get('analisis_ia', '')
-    print(f"[CARD-DEBUG] result_anon: analisis_ia type={type(analisis_ia)} len={len(analisis_ia)} bool={bool(analisis_ia)}")
-    print(f"[CARD-DEBUG] keys en session data: {list(data.keys())}")
-
     context = {
         'info':          data['info'],
         'charts':        charts,
         'tabla_mensual': _pnl_para_tabla(pnl_mensual_df, n_meses=12),
         'tabla_anual':   _pnl_anual_para_tabla(pnl_anual_df),
-        'analisis_ia':   analisis_ia,
         'token':         token,
     }
     return render(request, 'forecast/result_anon.html', context)
@@ -484,6 +448,47 @@ def download_anon(request, token):
     return response
 
 
+def ia_stream_anon(request, token):
+    from django.conf import settings as _settings
+    key = f'forecast_{token}'
+    data = request.session.get(key)
+    if data is None:
+        return HttpResponse('not found', status=404)
+    api_key = getattr(_settings, 'OPENROUTER_API_KEY', '').strip()
+    if not api_key:
+        return HttpResponse('no key', status=503)
+    prompt = _build_ia_prompt(data['info'], _dict_a_df(data['pnl_anual']))
+    response = StreamingHttpResponse(
+        _ia_sse_generator(prompt, api_key),
+        content_type='text/event-stream',
+    )
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
+
+
+@login_required
+def ia_stream_proyecto(request, pk):
+    from django.conf import settings as _settings
+    proyecto = get_object_or_404(Proyecto, pk=pk, usuario=request.user)
+    api_key = getattr(_settings, 'OPENROUTER_API_KEY', '').strip()
+    if not api_key:
+        return HttpResponse('no key', status=503)
+    pnl_anual_df = _dict_a_df(proyecto.pnl_anual_json)
+    info = {
+        'metodo_usado': proyecto.metodo_usado,
+        'meses': proyecto.meses_historicos,
+    }
+    prompt = _build_ia_prompt(info, pnl_anual_df)
+    response = StreamingHttpResponse(
+        _ia_sse_generator(prompt, api_key),
+        content_type='text/event-stream',
+    )
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
+
+
 @login_required
 def project_list(request):
     proyectos = Proyecto.objects.filter(usuario=request.user)
@@ -498,15 +503,11 @@ def project_detail(request, pk):
     hist_df        = _dict_a_df(proyecto.historial_json) if proyecto.historial_json else None
     charts         = _make_charts_b64(pnl_mensual_df, hist_df, pnl_anual_df)
 
-    analisis_ia = proyecto.analisis_ia
-    print(f"[CARD-DEBUG] project_detail pk={pk}: analisis_ia type={type(analisis_ia)} len={len(analisis_ia)} bool={bool(analisis_ia)}")
-
     context = {
         'proyecto':      proyecto,
         'charts':        charts,
         'tabla_mensual': _pnl_para_tabla(pnl_mensual_df, n_meses=12),
         'tabla_anual':   _pnl_anual_para_tabla(pnl_anual_df),
-        'analisis_ia':   analisis_ia,
     }
     return render(request, 'forecast/project_detail.html', context)
 

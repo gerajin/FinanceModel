@@ -80,12 +80,12 @@ def ejecutar_forecast(
     # 3. Ventas = volumen proyectado × precio unitario proyectado
     ventas_proy = volumen_proy * precio_proy
 
-    # 4. MO directa e indirecta: costo fijo mensual + variacion_costos anual
+    # 4. MO directa e indirecta: costo fijo mensual + incremento_salarial anual
     mo_directa_proy = _proy_base_fija(
-        df_hist["mo_directa"], idx, año_ref, premisas.variacion_costos
+        df_hist["mo_directa"], idx, año_ref, premisas.incremento_salarial
     )
     mo_indirecta_proy = _proy_base_fija(
-        df_hist["mo_indirecta"], idx, año_ref, premisas.variacion_costos
+        df_hist["mo_indirecta"], idx, año_ref, premisas.incremento_salarial
     )
 
     # 5. Materia prima: costo variable (costo_unitario × volumen proyectado)

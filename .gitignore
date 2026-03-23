@@ -18,7 +18,7 @@ venv/
 env/
 
 # Django
-staticfiles/
+#staticfiles/
 media/
 *.log
 
@@ -28,3 +28,9 @@ media/
 .idea/
 *.DS_Store
 Thumbs.db
+
+skills-lock.json
+start.sh
+*skills
+.agents
+DF_prueba.xlsx

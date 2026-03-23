@@ -54,16 +54,17 @@
   </div>
 </div>
 
-<!-- Análisis de IA -->
-{% if analisis_ia %}
-<div class="fm-ai-card mb-4">
+<!-- Análisis de IA (carga asíncrona via SSE) -->
+<div class="fm-ai-card mb-4" id="ia-card">
   <div class="d-flex align-items-center gap-2 mb-3">
     <span class="fm-ai-badge"><i class="bi bi-cpu me-1"></i>IA</span>
     <span class="fm-ai-title">Análisis del Forecast</span>
+    <span id="ia-spinner" class="ms-2">
+      <span class="spinner-border spinner-border-sm opacity-75" style="color:rgba(255,255,255,.6)"></span>
+    </span>
   </div>
-  <div class="fm-ai-body">{{ analisis_ia }}</div>
+  <div class="fm-ai-body" id="ia-content" style="white-space:pre-wrap;min-height:2.5rem"></div>
 </div>
-{% endif %}
 
 <!-- Gráficas -->
 {% if charts %}
@@ -167,4 +168,28 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var content = document.getElementById('ia-content');
+  var spinner = document.getElementById('ia-spinner');
+  var text = '';
+  var src = new EventSource("{% url 'forecast:ia_stream_proyecto' pk=proyecto.pk %}");
+  src.onmessage = function(e){
+    if(e.data === '[DONE]'){ src.close(); spinner.style.display='none'; return; }
+    try{
+      var d = JSON.parse(e.data);
+      if(d.error){ src.close(); spinner.style.display='none'; return; }
+      if(d.t){ text += d.t; content.textContent = text; }
+    }catch(err){}
+  };
+  src.onerror = function(){
+    src.close();
+    spinner.style.display='none';
+    if(!text) content.innerHTML = '<span style="opacity:.6">Análisis no disponible.</span>';
+  };
+})();
+</script>
 {% endblock %}
