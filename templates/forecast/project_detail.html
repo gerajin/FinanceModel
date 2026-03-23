@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ proyecto.nombre }} – FinanceModel{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="fm-page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+  <div>
+    <h3>{{ proyecto.nombre }}</h3>
+    <span class="fm-subtitle">
+      Creado {{ proyecto.creado|date:"d/m/Y H:i" }}
+      &nbsp;·&nbsp; Método:
+      <span class="fm-badge fm-badge-blue ms-1">{{ proyecto.metodo_usado|upper }}</span>
+    </span>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'forecast:project_charts' pk=proyecto.pk %}" class="btn btn-fm-steel">
+      <i class="bi bi-bar-chart-line me-1"></i>Gráficas
+    </a>
+    <a href="{% url 'forecast:download_proyecto' pk=proyecto.pk tipo='mensual' %}" class="btn btn-fm-secondary">
+      <i class="bi bi-download me-1"></i>CSV Mensual
+    </a>
+    <a href="{% url 'forecast:download_proyecto' pk=proyecto.pk tipo='anual' %}" class="btn btn-fm-secondary">
+      <i class="bi bi-download me-1"></i>CSV Anual
+    </a>
+    <a href="{% url 'forecast:project_list' %}" class="btn btn-fm-ghost">
+      <i class="bi bi-arrow-left me-1"></i>Mis proyectos
+    </a>
+  </div>
+</div>
+
+<!-- Info cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="fm-metric-card">
+      <div class="fm-metric-value">{{ proyecto.meses_historicos }}</div>
+      <div class="fm-metric-label">Meses históricos</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fm-metric-card accent-egyptian">
+      <div class="fm-metric-value val-egyptian">{{ proyecto.metodo_usado|upper }}</div>
+      <div class="fm-metric-label">Método</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fm-metric-card accent-steel">
+      <div class="fm-metric-value val-steel" style="font-size:1.3rem">
+        {{ proyecto.inflacion_anual|floatformat:2 }} / {{ proyecto.variacion_costos|floatformat:2 }}
+      </div>
+      <div class="fm-metric-label">Inflación / Var. costos (dec.)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Análisis de IA -->
+{% if analisis_ia %}
+<div class="fm-ai-card mb-4">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <span class="fm-ai-badge"><i class="bi bi-cpu me-1"></i>IA</span>
+    <span class="fm-ai-title">Análisis del Forecast</span>
+  </div>
+  <div class="fm-ai-body">{{ analisis_ia }}</div>
+</div>
+{% endif %}
+
+<!-- Gráficas -->
+{% if charts %}
+<div class="row g-3 mb-4">
+  {% if charts.vol %}
+  <div class="col-md-6">
+    <div class="fm-card">
+      <div class="fm-card-header-light">
+        <i class="bi bi-box-seam text-royal"></i>
+        Volumen
+      </div>
+      <div class="fm-card-body" style="padding:.75rem">
+        <img src="data:image/png;base64,{{ charts.vol }}" class="fm-chart-img" alt="Volumen">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if charts.pnl %}
+  <div class="col-md-6">
+    <div class="fm-card">
+      <div class="fm-card-header-light">
+        <i class="bi bi-currency-dollar" style="color:var(--celadon-dark)"></i>
+        P&L – Ventas y Utilidad de Operación
+      </div>
+      <div class="fm-card-body" style="padding:.75rem">
+        <img src="data:image/png;base64,{{ charts.pnl }}" class="fm-chart-img" alt="P&L">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Tabla P&L Mensual -->
+<div class="fm-card mb-4">
+  <div class="fm-card-header">
+    <i class="bi bi-table"></i>
+    <h6>P&L Mensual – Primeros 12 meses proyectados</h6>
+  </div>
+  <div class="fm-card-body-flush">
+    <div class="table-responsive">
+      <table class="fm-table table mb-0">
+        <thead>
+          <tr>
+            <th class="fm-col-label">Concepto</th>
+            {% for h in tabla_mensual.headers %}<th class="text-end">{{ h }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tabla_mensual.rows %}
+          <tr class="{% if row.is_total %}fm-row-total{% endif %}">
+            <td class="fm-col-label">{{ row.label }}</td>
+            {% for val in row.values %}
+            <td class="text-end">
+              {% if val is not None %}
+                {% if row.fmt == 'int' %}{{ val|floatformat:0|intcomma }}
+                {% else %}{{ val|floatformat:2|intcomma }}{% endif %}
+              {% else %}-{% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla P&L Anual -->
+<div class="fm-card mb-4">
+  <div class="fm-card-header">
+    <i class="bi bi-calendar3"></i>
+    <h6>P&L Anual – Resumen por año</h6>
+  </div>
+  <div class="fm-card-body-flush">
+    <div class="table-responsive">
+      <table class="fm-table table mb-0">
+        <thead>
+          <tr>
+            <th class="fm-col-label">Concepto</th>
+            {% for h in tabla_anual.headers %}<th class="text-end">{{ h }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tabla_anual.rows %}
+          <tr class="{% if row.is_total %}fm-row-total{% endif %}">
+            <td class="fm-col-label">{{ row.label }}</td>
+            {% for val in row.values %}
+            <td class="text-end">
+              {% if val is not None %}
+                {% if row.fmt == 'int' %}{{ val|floatformat:0|intcomma }}
+                {% else %}{{ val|floatformat:2|intcomma }}{% endif %}
+              {% else %}-{% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

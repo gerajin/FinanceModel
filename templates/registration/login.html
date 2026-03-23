@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesión – FinanceModel{% endblock %}
+
+{% block content %}
+<div class="fm-auth-wrapper">
+  <div class="fm-auth-card">
+
+    <div class="fm-auth-header">
+      <div class="fm-auth-logo">
+        <span class="fm-auth-logo-icon"><i class="bi bi-graph-up-arrow"></i></span>
+        FinanceModel
+      </div>
+      <p class="fm-auth-subtitle">Plataforma de proyecciones financieras</p>
+    </div>
+
+    <div class="fm-auth-body fm-form">
+      <p class="fm-section-title mb-4">Acceso a tu cuenta</p>
+
+      <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="mb-4">
+            <label for="{{ field.id_for_label }}" class="fm-form-label">
+              {{ field.label }}
+            </label>
+            {{ field }}
+            {% if field.errors %}
+              <div class="text-danger small mt-1">
+                <i class="bi bi-exclamation-circle me-1"></i>{{ field.errors|join:', ' }}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <div class="d-grid mt-2">
+          <button type="submit" class="btn btn-fm-primary btn-lg">
+            <i class="bi bi-box-arrow-in-right me-1"></i>Entrar
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="fm-auth-footer">
+      ¿No tienes cuenta?
+      <a href="{% url 'register' %}">Regístrate gratis</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+# Secretos y configuración local
+.env
+*.env
+
+# Base de datos local
+db.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Django
+staticfiles/
+media/
+*.log
+
+# IDE / OS
+.claude/
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db

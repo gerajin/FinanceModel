@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Resultados – FinanceModel{% endblock %}
+
+{% block content %}
+
+<!-- Banner registro -->
+<div class="fm-register-banner d-flex align-items-center gap-2">
+  <i class="bi bi-star-fill text-warning fs-5"></i>
+  <div>
+    <strong>¿Quieres guardar este forecast?</strong>
+    <a href="{% url 'register' %}">Regístrate gratis</a>
+    para guardar proyectos y descargar reportes anuales.
+  </div>
+  <button type="button" class="btn-close btn-sm ms-auto" data-bs-dismiss="alert"
+          onclick="this.closest('.fm-register-banner').remove()"></button>
+</div>
+
+<!-- Info cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="fm-metric-card">
+      <div class="fm-metric-value">{{ info.meses }}</div>
+      <div class="fm-metric-label">Meses históricos</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fm-metric-card accent-egyptian">
+      <div class="fm-metric-value val-egyptian">{{ info.metodo_usado|upper }}</div>
+      <div class="fm-metric-label">Método usado</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fm-metric-card accent-steel" style="padding:.85rem 1rem">
+      <a href="{% url 'forecast:download_anon' token=token %}"
+         class="btn btn-fm-steel w-100">
+        <i class="bi bi-download me-1"></i>Descargar CSV
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Análisis de IA -->
+{% if analisis_ia %}
+<div class="fm-ai-card mb-4">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <span class="fm-ai-badge"><i class="bi bi-cpu me-1"></i>IA</span>
+    <span class="fm-ai-title">Análisis del Forecast</span>
+  </div>
+  <div class="fm-ai-body">{{ analisis_ia }}</div>
+</div>
+{% endif %}
+
+<!-- Gráficas -->
+{% if charts %}
+<div class="row g-3 mb-4">
+  {% if charts.vol %}
+  <div class="col-md-6">
+    <div class="fm-card">
+      <div class="fm-card-header-light">
+        <i class="bi bi-box-seam text-royal"></i>
+        Volumen
+      </div>
+      <div class="fm-card-body" style="padding:.75rem">
+        <img src="data:image/png;base64,{{ charts.vol }}" class="fm-chart-img" alt="Volumen">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if charts.pnl %}
+  <div class="col-md-6">
+    <div class="fm-card">
+      <div class="fm-card-header-light">
+        <i class="bi bi-currency-dollar" style="color:var(--celadon-dark)"></i>
+        P&L – Ventas y Utilidad de Operación
+      </div>
+      <div class="fm-card-body" style="padding:.75rem">
+        <img src="data:image/png;base64,{{ charts.pnl }}" class="fm-chart-img" alt="P&L">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Tabla P&L Mensual -->
+<div class="fm-card mb-4">
+  <div class="fm-card-header">
+    <i class="bi bi-table"></i>
+    <h6>P&L Mensual – Primeros 12 meses proyectados</h6>
+  </div>
+  <div class="fm-card-body-flush">
+    <div class="table-responsive">
+      <table class="fm-table table mb-0">
+        <thead>
+          <tr>
+            <th class="fm-col-label">Concepto</th>
+            {% for h in tabla_mensual.headers %}<th class="text-end">{{ h }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tabla_mensual.rows %}
+          <tr class="{% if row.is_total %}fm-row-total{% endif %}">
+            <td class="fm-col-label">{{ row.label }}</td>
+            {% for val in row.values %}
+            <td class="text-end">
+              {% if val is not None %}
+                {% if row.fmt == 'int' %}{{ val|floatformat:0|intcomma }}
+                {% else %}{{ val|floatformat:2|intcomma }}{% endif %}
+              {% else %}-{% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla P&L Anual -->
+<div class="fm-card mb-4">
+  <div class="fm-card-header">
+    <i class="bi bi-calendar3"></i>
+    <h6>P&L Anual – Resumen por año</h6>
+  </div>
+  <div class="fm-card-body-flush">
+    <div class="table-responsive">
+      <table class="fm-table table mb-0">
+        <thead>
+          <tr>
+            <th class="fm-col-label">Concepto</th>
+            {% for h in tabla_anual.headers %}<th class="text-end">{{ h }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tabla_anual.rows %}
+          <tr class="{% if row.is_total %}fm-row-total{% endif %}">
+            <td class="fm-col-label">{{ row.label }}</td>
+            {% for val in row.values %}
+            <td class="text-end">
+              {% if val is not None %}
+                {% if row.fmt == 'int' %}{{ val|floatformat:0|intcomma }}
+                {% else %}{{ val|floatformat:2|intcomma }}{% endif %}
+              {% else %}-{% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-2 justify-content-center mt-4">
+  <a href="{% url 'forecast:upload' %}" class="btn btn-fm-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Nuevo forecast
+  </a>
+  <a href="{% url 'register' %}" class="btn btn-fm-success">
+    <i class="bi bi-person-plus me-1"></i>Registrarse para guardar
+  </a>
+</div>
+
+{% endblock %}

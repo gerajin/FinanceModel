@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Registro – FinanceModel{% endblock %}
+
+{% block content %}
+<div class="fm-auth-wrapper">
+  <div class="fm-auth-card" style="max-width:480px">
+
+    <div class="fm-auth-header">
+      <div class="fm-auth-logo">
+        <span class="fm-auth-logo-icon"><i class="bi bi-graph-up-arrow"></i></span>
+        FinanceModel
+      </div>
+      <p class="fm-auth-subtitle">Crea tu cuenta y guarda tus proyectos</p>
+    </div>
+
+    <div class="fm-auth-body fm-form">
+      <p class="fm-section-title mb-4">Nueva cuenta</p>
+
+      <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="mb-4">
+            <label for="{{ field.id_for_label }}" class="fm-form-label">
+              {{ field.label }}
+            </label>
+            {{ field }}
+            {% if field.help_text %}
+              <div class="form-text mt-1">{{ field.help_text }}</div>
+            {% endif %}
+            {% if field.errors %}
+              <div class="text-danger small mt-1">
+                <i class="bi bi-exclamation-circle me-1"></i>{{ field.errors|join:', ' }}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <div class="d-grid mt-2">
+          <button type="submit" class="btn btn-fm-success btn-lg">
+            <i class="bi bi-person-check me-1"></i>Crear cuenta
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="fm-auth-footer">
+      ¿Ya tienes cuenta?
+      <a href="{% url 'login' %}">Inicia sesión</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Mis Proyectos – FinanceModel{% endblock %}
+
+{% block content %}
+
+<div class="fm-page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+  <div>
+    <h3><i class="bi bi-folder2-open me-2"></i>Mis Proyectos</h3>
+    <span class="fm-subtitle">Gestiona y consulta tus forecasts guardados</span>
+  </div>
+  <a href="{% url 'forecast:upload' %}" class="btn btn-fm-primary">
+    <i class="bi bi-plus-lg me-1"></i>Nuevo Forecast
+  </a>
+</div>
+
+{% if proyectos %}
+<div class="fm-card">
+  <div class="fm-card-body-flush">
+    <div class="table-responsive">
+      <table class="fm-table fm-project-table table mb-0">
+        <thead>
+          <tr>
+            <th>Proyecto</th>
+            <th>Método</th>
+            <th>Score</th>
+            <th>Meses hist.</th>
+            <th>Creado</th>
+            <th class="text-end" style="min-width:130px">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in proyectos %}
+          <tr>
+            <td class="fm-col-label fw-semibold">{{ p.nombre }}</td>
+            <td>
+              <span class="fm-badge fm-badge-blue">{{ p.metodo_usado|upper }}</span>
+            </td>
+            <td>
+              {% if p.score_confiabilidad == 'alta' %}
+                <span class="fm-badge fm-badge-success">{{ p.score_confiabilidad }}</span>
+              {% elif p.score_confiabilidad == 'media' %}
+                <span class="fm-badge fm-badge-warning">{{ p.score_confiabilidad }}</span>
+              {% else %}
+                <span class="fm-badge fm-badge-muted">{{ p.score_confiabilidad }}</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">{{ p.meses_historicos }}</td>
+            <td><small class="text-muted">{{ p.creado|date:"d/m/Y H:i" }}</small></td>
+            <td class="text-end">
+              <a href="{% url 'forecast:project_detail' pk=p.pk %}"
+                 class="btn btn-fm-secondary btn-sm me-1" title="Ver detalle">
+                <i class="bi bi-eye"></i>
+              </a>
+              <a href="{% url 'forecast:project_charts' pk=p.pk %}"
+                 class="btn btn-fm-steel btn-sm me-1" title="Ver gráficas">
+                <i class="bi bi-bar-chart-line"></i>
+              </a>
+              <form method="post" action="{% url 'forecast:delete_proyecto' pk=p.pk %}" class="d-inline"
+                    onsubmit="return confirm('¿Eliminar el proyecto &quot;{{ p.nombre }}&quot;? Esta acción no se puede deshacer.')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-fm-danger btn-sm" title="Eliminar">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<div class="fm-empty-state">
+  <span class="fm-empty-icon"><i class="bi bi-folder-x"></i></span>
+  <p>No tienes proyectos guardados todavía.</p>
+  <a href="{% url 'forecast:upload' %}" class="btn btn-fm-primary btn-lg">
+    <i class="bi bi-lightning-charge me-1"></i>Crear primer forecast
+  </a>
+</div>
+{% endif %}
+
+{% endblock %}
